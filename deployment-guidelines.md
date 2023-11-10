@@ -63,6 +63,14 @@ deployment user to ensure there exists mechanisms or additional software to
 authorize users and applications to the data, for example, via proxies, web
 server and other network protection technologies.
 
+`docker run --network=host` generally should be avoided in production. The
+container networking will not be isolated from your host, and generally you can
+expose ports to the host with `docker run -p 8080:8080`. If one container needs
+to access the services from another container, use `docker network create` to
+create a named network that the two containers can share and use to communicate.
+See the [docker networking documentation](https://docs.docker.com/network/) for
+details.
+
 ## SELinux or AppArmor
 
 [Security-Enhanced Linux (SELinux)](https://www.redhat.com/en/topics/linux/what-is-selinux)
