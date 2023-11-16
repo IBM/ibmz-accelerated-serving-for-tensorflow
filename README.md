@@ -12,8 +12,9 @@
 - [Security and Deployment Guidelines](#security-and-deployment-guidelines)
 - [Execution on the Integrated Accelerator for AI and on CPU](#execution-paths)
 - [Model Validation](#model-validation)
-<!-- - [Using the Code Samples](#code-samples) -->
+- [Using the Code Samples](#code-samples)
 - [Frequently Asked Questions](#faq)
+- [Technical Support](#contact)
 - [Versioning Policy and Release Cadence](#versioning)
 - [Licenses](#licenses)
 
@@ -30,11 +31,11 @@ Accelerator for AI through the
 [IBM z Deep Neural Network](https://github.com/IBM/zDNN) (zDNN) library. The IBM
 zDNN library contains a set of primitives that support Deep Neural Networks.
 These primitives transparently target the IBM Integrated Accelerator for AI on
-IBM z16™ and later. No changes to the original model are needed to take
-advantage of the new inference acceleration capabilities.
+IBM z16 and later. No changes to the original model are needed to take advantage
+of the new inference acceleration capabilities.
 
 _Note. When using IBM Z Accelerated Serving for TensorFlow on either an IBM
-z14™ or an IBM z15™, TensorFlow will transparently target the CPU with no
+z15® or an IBM z14®, TensorFlow will transparently target the CPU with no
 changes to the model._
 
 # Downloading the IBM Z Accelerated Serving for TensorFlow container image <a id="container"></a>
@@ -97,8 +98,8 @@ For documentation on serving models with TensorFlow Serving please visit the
 official
 [Open Source TensorFlow Serving documentation](https://www.tensorflow.org/tfx/guide/serving?hl=en).
 
-<!-- For brief examples on deploying models with TensorFlow Serving, please visit our
-[samples section](#code-samples). -->
+For brief examples on deploying models with TensorFlow Serving, please visit our
+[samples section](#code-samples).
 
 # A Look into the Acceleration<a id="acceleration"></a>
 
@@ -219,8 +220,9 @@ features or logs.
 
 # Security and Deployment Guidelines <a id="security-and-deployment-guidelines"></a>
 
-- Documentation for security and deployment best practices can be found
-  [here](deployment-guidelines.md).
+- For security and deployment best practices, please visit the common AI Toolkit
+  documentation found
+  [here](https://github.com/IBM/ai-toolkit-for-z-and-linuxone).
 
 # Execution on the Integrated Accelerator for AI and on CPU <a id="execution-paths"></a>
 
@@ -230,12 +232,12 @@ IBM Z Accelerated Serving for TensorFlow container image follows IBM's train
 anywhere and deploy on IBM Z strategy.
 
 By default, when using the IBM Z Accelerated Serving for TensorFlow container
-image on an IBM z16™ and later system, TensorFlow core will transparently
-target the Integrated Accelerator for AI for a number of compute-intensive
-operations during inferencing with no changes to the model.
+image on an IBM z16 and later system, TensorFlow core will transparently target
+the Integrated Accelerator for AI for a number of compute-intensive operations
+during inferencing with no changes to the model.
 
-When using IBM Z Accelerated Serving for TensorFlow on either an IBM z14™ or an
-IBM z15™, TensorFlow will transparently target the CPU with no changes to the
+When using IBM Z Accelerated Serving for TensorFlow on either an IBM z15 or an
+IBM z14, TensorFlow will transparently target the CPU with no changes to the
 model
 
 To modify the default execution path, you may change the environment variable,
@@ -284,9 +286,9 @@ optimization illustrated in this document can be found
 _Note. Models that were trained outside of the TensorFlow ecosystem may throw
 endianness issues._
 
-<!-- # Using the Code Samples <a id="code-samples"></a>
+# Using the Code Samples <a id="code-samples"></a>
 
-Documentation for our code samples can be found [here](samples). -->
+Documentation for our code samples can be found [here](samples).
 
 # Frequently Asked Questions <a id="faq"></a>
 
@@ -305,12 +307,12 @@ LinuxONE Container Registry, namely
 and
 [ibmz/ibmz-accelerated-serving-for-tensorflow](https://ibm.github.io/ibm-z-oss-hub/containers/ibmz-accelerated-serving-for-tensorflow.html).
 
-The **"ibmz/tensorflow-serving"** container image does not have support for the
-IBM Integrated Accelerator for AI. The `ibmz/tensorflow-serving` only
-transparently targets the CPU. It does not have any optimizations referenced in
-this document.
+The `ibmz/tensorflow-serving` container image does not have support for the IBM
+Integrated Accelerator for AI. The `ibmz/tensorflow-serving` container image
+only transparently targets the CPU. It does not have any optimizations
+referenced in this document.
 
-The **"ibmz/ibmz-accelerated-serving-for-tensorflow"** container image includes
+The `ibmz/ibmz-accelerated-serving-for-tensorflow` container image includes
 support for TensorFlow core Graph Execution to transparently target the IBM
 Integrated Accelerator for AI. The
 `ibmz/ibmz-accelerated-serving-for-tensorflow` container image also still allows
@@ -323,10 +325,10 @@ You may run the IBM Z Accelerated Serving for TensorFlow container image on IBM
 Linux on Z or IBM® z/OS® Container Extensions (IBM zCX).
 
 _Note. The IBM Z Accelerated Serving for TensorFlow container image will
-transparently target the IBM Integrated Accelerator for AI on IBM® z16™ and
-later. However, if using the IBM Z Accelerated Serving for TensorFlow container
-image on either an IBM z14™ or an IBM z15™, TensorFlow will transparently
-target the CPU with no changes to the model._
+transparently target the IBM Integrated Accelerator for AI on IBM z16 and later.
+However, if using the IBM Z Accelerated Serving for TensorFlow container image
+on either an IBM z15 or an IBM z14, TensorFlow will transparently target the CPU
+with no changes to the model._
 
 ## Q: Can I install a newer or older version of TensorFlow Serving in the container?
 
@@ -335,6 +337,11 @@ configured in the container will not target the IBM Integrated Accelerator for
 AI. Additionally, installing a newer or older version of TensorFlow Serving, or
 modifying the existing TensorFlow Serving that is installed in the container
 image may have unintended, unsupported, consequences.
+
+# Technical Support <a id="contact"></a>
+
+Information regarding technical support can be found
+[here](https://github.com/IBM/ai-toolkit-for-z-and-linuxone).
 
 # Versioning Policy and Release Cadence <a id="versioning"></a>
 
@@ -395,3 +402,13 @@ worldwide basis.
 
 TensorFlow, the TensorFlow logo and any related marks are trademarks of Google
 Inc.
+
+Docker and the Docker logo are trademarks or registered trademarks of Docker,
+Inc. in the United States and/or other countries. Docker, Inc. and other parties
+may also have trademark rights in other terms used herein.
+
+IBM, the IBM logo, and ibm.com, IBM z16, IBM z15, IBM z14 are trademarks or
+registered trademarks of International Business Machines Corp., registered in
+many jurisdictions worldwide. Other product and service names might be
+trademarks of IBM or other companies. The current list of IBM trademarks can be
+found [here](https://www.ibm.com/legal/copyright-trademark).
