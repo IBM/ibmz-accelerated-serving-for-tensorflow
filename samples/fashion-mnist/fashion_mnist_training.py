@@ -16,6 +16,11 @@
 Sample Tensorflow application training with the Fashion MNIST data set.
 Run this model with `fashion_mnist.py`.
 """
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+
 import tensorflow as tf
 
 (X_train, y_train), (X_test, y_test) = \
@@ -63,4 +68,3 @@ score = model.evaluate(X_test, y_test, verbose=0)
 # Print test accuracy
 print('\n', 'Test accuracy:', score[1])
 model.save('./saved_model/1')
-
