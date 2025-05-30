@@ -34,9 +34,9 @@ def main(rnn_type: str = 'lstm', batch_size: int = 2000, seq_length: int = 7):
         request.model_spec.signature_name = "serving_default"
 
         # Process input.
-        request.inputs["inputs"].CopyFrom(
+        request.inputs["input_1"].CopyFrom(
             tf.make_tensor_proto(input_batch, dtype=tf.float32))
-        request.output_filter.append("output_1")
+        request.output_filter.append("output_0")
 
         # Send request.
         channel = grpc.insecure_channel('localhost:8500')
@@ -44,7 +44,7 @@ def main(rnn_type: str = 'lstm', batch_size: int = 2000, seq_length: int = 7):
         outputs = stub.Predict(request, 5.0)
 
         # Process output.
-        y_pred.extend(tf.make_ndarray(outputs.outputs["output_1"]))
+        y_pred.extend(tf.make_ndarray(outputs.outputs["output_0"]))
         y_true.extend(label_batch)
 
     y_pred = tf.concat(y_pred, axis=0)
