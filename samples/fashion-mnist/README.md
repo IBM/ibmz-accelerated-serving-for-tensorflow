@@ -1,145 +1,120 @@
-# Fashion MNIST Sample
+# Fashion MNIST Serving Sample
 
-The code sample in this directory
-[loads](https://www.tensorflow.org/versions/r2.12/api_docs/python/tf/keras/datasets/fashion_mnist/load_data)
-the
+The code sample in this directory trains a model on the
 [Fashion MNIST data set](https://www.tensorflow.org/datasets/catalog/fashion_mnist)
-and trains a model. A second script performs inference on the model with the
-test data set and displays the results.
+and serves it using IBM Z Accelerated for TensorFlow Serving. Two inference
+scripts exercise the served model over gRPC and REST.
 
-The [tensorflow README file](../../README.md) contains general information on
-downloading and running the samples.
+The [tensorflow serving README file](../../README.md) contains general
+information on downloading and running the samples.
 
-These samples will download the MNIST data set from the Internet.
+The Fashion MNIST data set is downloaded automatically when the training script
+runs.
 
-# Running the Sample
+## Prerequisites
 
-These instructions assume you have cloned the repository or have otherwise
-copied the files in this directory to your host system so you can access the
-code.
+The inference scripts require `tensorflow-serving-api`, which is not included
+in the base IBM Z Accelerated for TensorFlow container. Because the base
+container runs as `ibm-user` (non-root), `prerequisites.sh` handles this by
+building a new container image on your behalf:
 
-## Training and Saving the Model
+1. It passes your chosen TensorFlow production image as a build argument to
+   `Containerfile`.
+2. `Containerfile` temporarily switches to `root` to install
+   `tensorflow-serving-api` into the venv, then drops back to `ibm-user` as
+   the runtime user.
+3. Once the image is built, `prerequisites.sh` creates a `workspace/`
+   directory alongside the sample scripts, then starts an interactive shell
+   inside the container with:
+   - The sample scripts mounted read-only at `/sample`
+   - The `workspace/` directory mounted at `/workspace` (writable)
 
-Note that you will run this commands from inside the IBM Z Accelerated for
-TensorFlow container. These steps follow the
-[Fashion MNIST training sample for the TensorFlow container](https://github.com/IBM/ibmz-accelerated-for-tensorflow/samples/fashion-mnist),
-expect here we show how to retrieve the model so it can be used with TensorFlow
-Serving.
-
-With podman as the container engine, some additional setup must be done as
-shown.
-
-Note `X.X.X` in these samples refers to the current version of the container
-image in IBM Container Registry.
-
-```bash
-cd samples
-
-# podman-only setup so TensorFlow can create directories and files from
-# training within this directory.
-chmod o+rwx fashion-mnist
-
-docker run -it --rm -v ./fashion-mnist/:/home/ibm-user/fashion-mnist:z --workdir /home/ibm-user/fashion-mnist icr.io/ibmz/ibmz-accelerated-for-tensorflow:X.X.X bash
-```
-
-- This container specified `-v`, which will bind mount the local folder
-  `./fashion-mnist` to the container at `/home/ibm-user/fashion-mnist`. This
-  will allow the model files to be accessed for the next step.
-- `--workdir` sets the current working directory to the bind mount. The sample
-  is coded to save the saved model to the current working directory.
-
-First, train and save the model to disk with the `fashion_mnist_training.py`
-script. This will download the fashion MNIST data set and create a model in the
-current directory.
-
-Training will take some time. The epoch number in the output will indicate
-progress.
+Run the script on the **host** (not from inside a container), passing your
+IBM Z Accelerated for TensorFlow production image as the argument:
 
 ```bash
-python fashion_mnist_training.py
+./prerequisites.sh <tf-base-image>
 ```
 
-Once complete, you can exit the IBM Z Accelerated for TensorFlow container. The
-model has been saved in the bind mounted directory.
+For example:
+
+```bash
+./prerequisites.sh icr.io/ibmz/ibmz-accelerated-for-tensorflow:1.6.0
+```
+
+This builds a local image tagged `fashion-mnist-serving-sample:latest` and
+drops you into an interactive shell at `/workspace` inside the container. All
+output files (trained model, exported SavedModel, etc.) are written there.
+
+## Running the Sample
+
+### Step 1 — Train and export the model
+
+All commands in this step are run from inside the container started by
+`prerequisites.sh`, where `/workspace` is the working directory.
+
+Train the model and export it as a SavedModel:
+
+```bash
+python /sample/fashion_mnist_training.py
+```
+
+This saves the exported model to `./saved_model/1` inside `/workspace`. Once
+training is complete, exit the container:
 
 ```bash
 exit
 ```
 
-With podman, the model files will be owned by the sub-uid used by the container.
-To change the ownership back to your user id, enter the following commands.
+### Step 2 — Start the TensorFlow Serving container
+
+Run the IBM Z Accelerated for TensorFlow Serving container on the **host**,
+mounting the exported model from `workspace/saved_model`:
 
 ```bash
-# podman-only setup. Note that `root` in this context refers to your
-# user id and group, not the real root user on the host machine.
-podman unshare chown -R root:root ./fashion-mnist/saved_model
-
-# Confirm that your id now owns the files.
-ls -la ./train/saved_model
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+docker run -d --rm \
+    -p 8500:8500 \
+    -p 8501:8501 \
+    -v "${SCRIPT_DIR}/workspace/saved_model:/models/fashion_mnist:z" \
+    -e MODEL_NAME=fashion_mnist \
+    icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X
 ```
 
-## Serving the Saved Model
+- `--detach` runs the serving container in the background.
+- `-p 8500:8500` and `-p 8501:8501` publish the gRPC and REST ports.
+- `-v` mounts the exported SavedModel into the serving container.
+- `-e MODEL_NAME=fashion_mnist` tells TensorFlow Serving what to call the model.
 
-Once the model has been trained, run the IBM Z Accelerated for TensorFlow
-Serving container to serve the model.
-
-```bash
-docker run -it --rm --detach -p 8500:8500 -p 8501:8501 -v './fashion-mnist/saved_model:/models/fashion_mnist:z' -e MODEL_NAME=fashion_mnist icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X
-```
-
-- This container has been run with `--detach`, which will run the container in
-  the background.
-- This container has been run with `-p`, which will publish the ports `8500` and
-  `8501` to the container.
-- This container has been run with `-v`, which will mount the local folder
-  `./fashion-mnist/saved_model` to the container at `/models/fashion_mnist`.
-- This container has been run with `-e`, which will set the environment variable
-  for `MODEL_NAME` with value `fashion_mnist` to the container.
-
-This will serve the saved model, which can be accessed via ports 8500 (gRPC) and
-8501 (REST).
-
-You can query the metadata for the model using curl:
+You can verify the server is ready by querying its metadata:
 
 ```bash
 curl http://localhost:8501/v1/models/fashion_mnist/metadata
 ```
 
-## Running Inference on Served Model
+### Step 3 — Run inference
 
-Note that you will run these commands from inside the IBM Z Accelerated for
-TensorFlow container.
-
-```bash
-docker run -it --rm --network=host -v './fashion-mnist:/home/ibm-user/fashion-mnist:z' --workdir /home/ibm-user/fashion-mnist icr.io/ibmz/ibmz-accelerated-for-tensorflow:X.X.X bash
-```
-
-- This container has been run with `--network=host`, which will add host network
-  scope to the container. This is for example purposes, in a production
-  environment you should not use `--network=host` for security purposes.
-
-Once the model has served, run the `fashion_mnist_grpc.py` script to run
-inference against the model using gRPC.
+Re-enter the sample container for inference, passing `inference` as the second
+argument so `prerequisites.sh` adds `--network=host` to the container run:
 
 ```bash
-# This will install this package from the Internet
-pip install tensorflow-serving-api
-python fashion_mnist_grpc.py
+./prerequisites.sh <tf-base-image> inference
 ```
 
-The script will report prediction accuracy for some sample images.
-
-To run inference against the model using REST API, run the
-`fashion_mnist_rest.py` script.
+Then run inference over gRPC:
 
 ```bash
-python fashion_mnist_rest.py
+python /sample/fashion_mnist_grpc.py
 ```
 
-The script will report prediction accuracy for some sample images.
-
-Once complete, you can exit the IBM Z Accelerated for TensorFlow container.
+Or over REST:
 
 ```bash
-exit
+python /sample/fashion_mnist_rest.py
 ```
+
+Both scripts will report prediction accuracy for sample images.
+
+## Known Issues
+
+There are no known open issues with this sample.

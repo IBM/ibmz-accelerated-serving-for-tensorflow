@@ -1,0 +1,22 @@
+# IBM Confidential
+# © Copyright IBM Corp. 2026
+
+# Usage:
+#   docker build --build-arg BASE_IMAGE=<image> -t fashion-mnist-serving-sample .
+#
+# BASE_IMAGE must be an IBM Z Accelerated for TensorFlow production image, e.g.:
+#   icr.io/ibmz/ibmz-accelerated-for-tensorflow:1.6.0
+#
+# Note: this image is used to run the inference scripts only.
+# The TensorFlow Serving container is run separately — see README.md.
+
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# Switch to root to install into the venv (ibm-user cannot write to /opt/venv)
+USER root
+
+RUN /opt/venv/bin/pip install --no-cache-dir tensorflow-serving-api
+
+# Drop back to non-root user for runtime
+USER ibm-user
