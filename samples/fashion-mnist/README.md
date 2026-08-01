@@ -26,7 +26,7 @@ building a new container image on your behalf:
 3. Once the image is built, `prerequisites.sh` creates a `workspace/`
    directory alongside the sample scripts, then starts an interactive shell
    inside the container with:
-   - The sample scripts mounted read-only at `/sample`
+   - The sample scripts mounted read-only at `/scripts`
    - The `workspace/` directory mounted at `/workspace` (writable)
 
 Run the script on the **host** (not from inside a container), passing your
@@ -56,7 +56,7 @@ All commands in this step are run from inside the container started by
 Train the model and export it as a SavedModel:
 
 ```bash
-python /sample/fashion_mnist_training.py
+python /scripts/fashion_mnist_training.py
 ```
 
 This saves the exported model to `./saved_model/1` inside `/workspace`. Once
@@ -104,13 +104,13 @@ argument so `prerequisites.sh` adds `--network=host` to the container run:
 Then run inference over gRPC:
 
 ```bash
-python /sample/fashion_mnist_grpc.py
+python /scripts/fashion_mnist_grpc.py
 ```
 
 Or over REST:
 
 ```bash
-python /sample/fashion_mnist_rest.py
+python /scripts/fashion_mnist_rest.py
 ```
 
 Both scripts will report prediction accuracy for sample images.

@@ -12,7 +12,7 @@
 #
 # The script builds a new container image with all dependencies pre-installed,
 # then starts an interactive shell inside it. Sample scripts are mounted
-# read-only at /sample. A user-owned workspace directory is created alongside
+# read-only at /scripts. A user-owned workspace directory is created alongside
 # the sample scripts and mounted at /workspace — this is where output files
 # (trained model, serving model, test data, etc.) will be written.
 #
@@ -103,13 +103,13 @@ if [[ -z "${CSV_PATH}" && ! -f "${WORKSPACE_DIR}/${CSV_FILENAME}" ]]; then
     echo ""
 fi
 echo "Inside the container, run the deployment script from /workspace, e.g.:"
-echo "  python /sample/credit_card_fraud_deployment.py"
+echo "  python /scripts/credit_card_fraud_deployment.py"
 echo ""
 
 docker run -it --rm \
     "${PODMAN_EXTRA_FLAGS[@]}" \
     --entrypoint bash \
-    -v "${SCRIPT_DIR}":/sample:ro,z \
+    -v "${SCRIPT_DIR}":/scripts:ro,z \
     -v "${WORKSPACE_DIR}":/workspace:z \
     -w /workspace \
     "${IMAGE_TAG}"

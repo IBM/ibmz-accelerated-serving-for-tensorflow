@@ -9,7 +9,7 @@
 #
 # The script builds a new container image with tensorflow-serving-api pre-installed,
 # then starts an interactive shell inside it. Sample scripts are mounted
-# read-only at /sample. A user-owned workspace directory is created alongside
+# read-only at /scripts. A user-owned workspace directory is created alongside
 # the sample scripts and mounted at /workspace — this is where output files
 # (trained model, saved model, etc.) will be written.
 #
@@ -70,7 +70,7 @@ echo ""
 echo "Build complete."
 echo ""
 echo "Inside the container, run the training script from /workspace, e.g.:"
-echo "  python /sample/fashion_mnist_training.py"
+echo "  python /scripts/fashion_mnist_training.py"
 echo ""
 echo "To run inference against a running serving container, re-run this script"
 echo "with 'inference' as the second argument to enable --network=host, e.g.:"
@@ -87,7 +87,7 @@ fi
 docker run -it --rm \
     "${PODMAN_EXTRA_FLAGS[@]}" \
     "${NETWORK_FLAGS[@]}" \
-    -v "${SCRIPT_DIR}":/sample:ro,z \
+    -v "${SCRIPT_DIR}":/scripts:ro,z \
     -v "${WORKSPACE_DIR}":/workspace:z \
     -w /workspace \
     "${IMAGE_TAG}" \

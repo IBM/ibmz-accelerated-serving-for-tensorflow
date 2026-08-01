@@ -29,7 +29,7 @@ container image on your behalf:
 3. Once the image is built, `prerequisites.sh` creates a `workspace/`
    directory alongside the sample scripts, then starts an interactive shell
    inside the container with:
-   - The sample scripts mounted read-only at `/sample`
+   - The sample scripts mounted read-only at `/scripts`
    - The `workspace/` directory mounted at `/workspace` (writable)
 
 This container is used for **deployment and inference** only. The TensorFlow
@@ -67,14 +67,14 @@ This exports the trained Keras model to a TensorFlow Serving Servable and
 creates a warmup file.
 
 ```bash
-python /sample/credit_card_fraud_deployment.py
+python /scripts/credit_card_fraud_deployment.py
 ```
 
 This creates a `serving_model/` directory in `/workspace`. To deploy the GRU
 model instead:
 
 ```bash
-python /sample/credit_card_fraud_deployment.py --rnn-type gru
+python /scripts/credit_card_fraud_deployment.py --rnn-type gru
 ```
 
 Once complete, exit the container:
@@ -116,7 +116,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 docker run -it --rm \
     --entrypoint bash \
     --network=host \
-    -v "${SCRIPT_DIR}":/sample:ro,z \
+    -v "${SCRIPT_DIR}":/scripts:ro,z \
     -v "${SCRIPT_DIR}/workspace":/workspace:z \
     -w /workspace \
     ccf-serving-sample:latest
@@ -128,13 +128,13 @@ docker run -it --rm \
 From inside the container, run inference using gRPC:
 
 ```bash
-python /sample/credit_card_fraud_grpc.py
+python /scripts/credit_card_fraud_grpc.py
 ```
 
 Or using REST:
 
 ```bash
-python /sample/credit_card_fraud_rest.py
+python /scripts/credit_card_fraud_rest.py
 ```
 
 Both scripts report the test accuracy. To run against the GRU model, add
