@@ -105,7 +105,7 @@ def gen_inference_batch(
 
 
 def prepare_inference_data(
-        rnn_type: str, batch_size: int, seq_length: int) \
+        rnn_type: str, batch_size: int) \
         -> Generator[tuple[np.ndarray, np.ndarray], Any, Any]:
     """
     Load and preprocess inference data.
@@ -125,12 +125,12 @@ def prepare_inference_data(
     return gen_inference_batch(x_original, fitted_mapper, test_indices, batch_size)
 
 
-def main(rnn_type: str = 'lstm', batch_size: int = 2048, seq_length: int = 7):
+def main(rnn_type: str = 'lstm', batch_size: int = 2048):
     """
     main
     """
 
-    test_generator = prepare_inference_data(rnn_type, batch_size, seq_length)
+    test_generator = prepare_inference_data(rnn_type, batch_size)
 
     y_pred = []
     y_true = []
@@ -177,12 +177,6 @@ if __name__ == '__main__':
         default=2048,
         help='Batch size for inference (default: 2048)',
     )
-    parser.add_argument(
-        '--seq-length',
-        type=int,
-        default=7,
-        help='Sequence length (default: 7)',
-    )
     args = parser.parse_args()
 
-    main(args.rnn_type, args.batch_size, args.seq_length)
+    main(args.rnn_type, args.batch_size)
