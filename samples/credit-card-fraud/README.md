@@ -164,6 +164,15 @@ Once complete, exit the container:
 exit
 ```
 
+## Cleanup
+
+When you are finished with the sample, remove the image and workspace volume:
+
+```bash
+docker rmi tensorflow-serving-ccf-sample:<timestamp>
+docker volume rm tensorflow-serving-ccf-workspace
+```
+
 ## Known Issues
 
 There are no known open issues with this sample.

@@ -140,6 +140,15 @@ python fashion_mnist_rest.py
 
 Both scripts will report prediction accuracy for sample images.
 
+## Cleanup
+
+When you are finished with the sample, remove the image and workspace volume:
+
+```bash
+docker rmi fashion-mnist-serving-sample:<timestamp>
+docker volume rm fashion-mnist-serving-workspace
+```
+
 ## Known Issues
 
 There are no known open issues with this sample.
