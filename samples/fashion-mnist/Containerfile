@@ -16,7 +16,10 @@ FROM ${BASE_IMAGE}
 # Switch to root to install into the venv (ibm-user cannot write to /opt/venv)
 USER root
 
-RUN /opt/venv/bin/pip install --no-cache-dir tensorflow-serving-api
+# Activate the venv for all subsequent RUN steps
+ENV PATH="/opt/venv/bin:${PATH}"
+
+RUN pip install --no-cache-dir tensorflow-serving-api
 
 # Drop back to non-root user for runtime
 USER ibm-user
