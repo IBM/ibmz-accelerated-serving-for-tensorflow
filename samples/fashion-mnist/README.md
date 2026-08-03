@@ -142,11 +142,19 @@ Both scripts will report prediction accuracy for sample images.
 
 ## Cleanup
 
-When you are finished with the sample, remove the image and workspace volume:
+When you are finished with the sample, remove the container, image, and workspace
+volume:
 
 ```bash
+docker container prune -f
 docker rmi fashion-mnist-serving-sample:<timestamp>
 docker volume rm fashion-mnist-serving-workspace
+```
+
+If you are using rootless Podman, verify no processes are left behind:
+
+```bash
+top -u $(whoami)
 ```
 
 ## Known Issues

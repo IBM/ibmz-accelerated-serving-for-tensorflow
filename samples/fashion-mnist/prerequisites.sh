@@ -73,3 +73,6 @@ echo "See the sample README for instructions on copying scripts into the contain
 echo ""
 echo "When finished, remove the workspace volume with:"
 echo "  docker volume rm ${VOLUME_NAME}"
+echo ""
+echo "If using rootless Podman, run 'docker container prune -f' after exiting"
+echo "the container to ensure networking processes are cleaned up."
