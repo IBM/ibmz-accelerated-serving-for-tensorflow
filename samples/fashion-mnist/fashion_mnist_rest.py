@@ -46,4 +46,3 @@ y_pred = tf.convert_to_tensor(output, dtype=tf.float32)
 correct_prediction = tf.equal(tf.argmax(y_pred, 1), tf.cast(y_test, tf.int64))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), axis=-1)
 print('Test accuracy:', accuracy.numpy())
-

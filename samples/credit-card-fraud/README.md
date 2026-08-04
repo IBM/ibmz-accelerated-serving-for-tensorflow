@@ -2,146 +2,185 @@
 
 The code sample in this directory uses the
 [Credit Card Fraud data set](https://github.com/IBM/TabFormer/tree/main/data/credit_card)
-and deploys a saved model for TensorFlow Serving. A second script performs
-inference on the model with the test data set and displays the results.
+and deploys a saved model for TensorFlow Serving. Two scripts then perform
+inference on the served model using gRPC and REST, and display the results.
 
-The [tensorflow README file](../../README.md) contains general information on
-downloading and running the samples.
+The [tensorflow-serving README file](../../README.md) contains general
+information on downloading and running the samples.
 
-These samples will require first downloading the data set from the Internet and
-extracting the archive.
+These samples require first downloading the data set from the Internet.
 
-# Running the Sample
+## Prerequisites
 
-These instructions assume you have cloned the repository or have otherwise
-copied the files in this directory to your host system so you can access the
-code.
+The sample depends on packages (`scikit-learn`, `pandas`, `joblib`,
+`tensorflow-serving-api`) that are not included in the base IBM Z Accelerated
+for TensorFlow container. `prerequisites.sh` handles this by building a new
+container image on your behalf:
 
-## Training and Saving the Model
+1. It passes your chosen IBM Z Accelerated for TensorFlow production image as a
+   build argument to `Containerfile`.
+2. `Containerfile` temporarily switches to `root` to run the `dnf` and `pip`
+   installs, then drops back to `ibm-user` as the runtime user.
+3. Once the image is built, `prerequisites.sh` starts an interactive shell
+   inside the container with a named volume mounted at `/workspace` (writable).
 
-Follow the steps in
-[Credit Card Fraud training sample for the TensorFlow container](https://github.com/IBM/ibmz-accelerated-for-tensorflow/samples/credit-card-fraud),
-to create, train, and save the model. Once completed, there should be a
-`saved_model` folder in your working directory, along with various artifacts
-created when saving the model.
+This container is used for **deployment and inference** only. The TensorFlow
+Serving container is started separately as described below.
+
+Before running `prerequisites.sh`, you must first train the model using the
+[Credit Card Fraud training sample for the TensorFlow container](https://github.com/IBM/ibmz-accelerated-for-tensorflow/tree/main/samples/credit-card-fraud).
+
+Run the script on the **host** (not from inside a container), passing your
+IBM Z Accelerated for TensorFlow production image as the argument:
+
+```bash
+./prerequisites.sh <base-image>
+```
+
+For example:
+
+```bash
+./prerequisites.sh icr.io/ibmz/ibmz-accelerated-for-tensorflow:1.6.0
+```
+
+This builds a local image and prints the generated image tag (e.g.
+`tensorflow-serving-ccf-sample:20250714-143022`) along with the `docker run` command
+to start the container.
+
+## Copying Scripts and Training Artifacts into the Container
+
+Once the container is running, open a second terminal on the host and use
+`docker cp` to copy the sample scripts into the container:
+
+```bash
+# Find the running container ID
+docker ps
+
+# Copy the sample scripts
+docker cp credit_card_fraud_deployment.py <container-id>:/workspace/
+docker cp credit_card_fraud_grpc.py <container-id>:/workspace/
+docker cp credit_card_fraud_rest.py <container-id>:/workspace/
+```
+
+Also copy the training artifacts produced by the TensorFlow CCF training
+sample into the container:
+
+```bash
+# Copy the trained model and supporting files
+docker cp /path/to/saved_model <container-id>:/workspace/
+docker cp /path/to/fitted_mapper_v2_lstm.pkl <container-id>:/workspace/
+docker cp /path/to/test_100k.csv <container-id>:/workspace/
+docker cp /path/to/test_100k.indices <container-id>:/workspace/
+```
+
+Then return to the container shell to run the sample.
 
 ## Deploying the Model for TensorFlow Serving
 
-Note that you will run this commands from inside the IBM Z Accelerated for
-TensorFlow container.
-
-With podman as the container engine, some additional setup must be done as
-shown.
-
-Note `X.X.X` in these samples refers to the current version of the container
-image in IBM Container Registry.
+From inside the container, run the `credit_card_fraud_deployment.py` script.
+This exports the trained Keras model to a TensorFlow Serving Servable and
+creates a warmup file.
 
 ```bash
-cd samples
-
-# podman-only setup so TensorFlow can create directories and files from
-# training within this directory.
-chmod o+rwx credit-card-fraud
-
-docker run -it --rm -v ./credit-card-fraud/:/home/ibm-user/credit-card-fraud:z --workdir /home/ibm-user/credit-card-fraud icr.io/ibmz/ibmz-accelerated-for-tensorflow:X.X.X bash
-```
-
-- This container specified `-v`, which will bind mount the local folder
-  `./credit-card-fraud` to the container at `/home/ibm-user/credit-card-fraud`.
-  This will allow the model files to be accessed for the next step.
-- `--workdir` sets the current working directory to the bind mount. The sample
-  is coded to save the saved model to the current working directory.
-
-First, deploy the model to a Servable with the `credit_card_fraud_deployment.py`
-script. This will create a `serving_model` folder in the current directory.
-
-```bash
-# This will install this package from the Internet
-pip install tensorflow-serving-api
 python credit_card_fraud_deployment.py
 ```
 
-Once complete, you can exit the IBM Z Accelerated for TensorFlow container. The
-model has been saved in the bind mounted directory.
+This creates a `serving_model/` directory in `/workspace`. To deploy the GRU
+model instead:
+
+```bash
+python credit_card_fraud_deployment.py --rnn-type gru
+```
+
+Once complete, exit the container:
 
 ```bash
 exit
 ```
 
-With podman, the model files will be owned by the sub-uid used by the container.
-To change the ownership back to your user id, enter the following commands.
+## Serving the Model
+
+Start the IBM Z Accelerated for TensorFlow Serving container, mounting the
+`serving_model/` directory from the workspace volume:
 
 ```bash
-# podman-only setup. Note that `root` in this context refers to your
-# user id and group, not the real root user on the host machine.
-podman unshare chown -R root:root ./credit-card-fraud/serving_model
-
-# Confirm that your id now owns the files.
-ls -la ./credit-card-fraud/serving_model
+docker run --rm --detach \
+    -p 8500:8500 -p 8501:8501 \
+    -v tensorflow-serving-ccf-workspace:/workspace \
+    -e MODEL_NAME=lstm \
+    --entrypoint tensorflow_model_server \
+    icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X \
+    --port=8500 --rest_api_port=8501 \
+    --model_name=lstm \
+    --model_base_path=/workspace/serving_model/lstm
 ```
 
-## Serving the Saved Model
+Replace `X.X.X` with the current version of the serving container image. For
+the GRU model, substitute `lstm` with `gru` in the `--model_name` and
+`--model_base_path` arguments.
 
-Once the model has been trained, run the IBM Z Accelerated for TensorFlow
-Serving container to serve the model.
-
-```bash
-docker run -it --rm --detach -p 8500:8500 -p 8501:8501 -v './credit-card-fraud/serving_model:/models:z' -e MODEL_NAME=lstm icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X
-```
-
-- This container has been run with `--detach`, which will run the container in
-  the background.
-- This container has been run with `-p`, which will publish the ports `8500` and
-  `8501` to the container.
-- This container has been run with `-v`, which will mount the local folder
-  `./credit-card-fraud/serving_model` to the container at `/models`.
-- This container has been run with `-e`, which will set the environment variable
-  for `MODEL_NAME` with value `lstm` to the container.
-
-This will serve the saved model, which can be accessed via ports 8500 (gRPC) and
-8501 (REST).
-
-You can query the metadata for the model using curl:
+You can verify the model is ready with:
 
 ```bash
 curl http://localhost:8501/v1/models/lstm/metadata
 ```
 
-## Running Inference on Served Model
+## Running Inference on the Served Model
 
-Note that you will run these commands from inside the IBM Z Accelerated for
-TensorFlow container.
+Start a new container shell with `--network=host` so the inference scripts
+can reach the serving container on `localhost`. Use the image tag printed by
+`prerequisites.sh`:
 
 ```bash
-docker run -it --rm --network=host -v './credit-card-fraud:/home/ibm-user/credit-card-fraud:z' --workdir /home/ibm-user/credit-card-fraud icr.io/ibmz/ibmz-accelerated-for-tensorflow:X.X.X bash
+docker run -it --rm \
+    --entrypoint bash \
+    --network=host \
+    -v tensorflow-serving-ccf-workspace:/workspace \
+    -w /workspace \
+    tensorflow-serving-ccf-sample:<timestamp>
 ```
 
-- This container has been run with `--network=host`, which will add host network
-  scope to the container. This is for example purposes, in a production
-  environment you should not use `--network=host` for security purposes.
+> Note: `--network=host` is used here for convenience in a sample environment.
+> In production, use a dedicated container network instead.
 
-Once the model has served, run the `credit_card_fraud_grpc.py` script to run
-inference against the model using gRPC.
+From inside the container, run inference using gRPC:
 
 ```bash
-# This will install this package from the Internet
-pip install tensorflow-serving-api
 python credit_card_fraud_grpc.py
 ```
 
-The script will report prediction accuracy for some sample transactions.
-
-To run inference against the model using REST API, run the
-`credit_card_fraud_rest.py` script.
+Or using REST:
 
 ```bash
 python credit_card_fraud_rest.py
 ```
 
-The script will report prediction accuracy for some sample transactions.
+Both scripts report the test accuracy. To run against the GRU model, add
+`--rnn-type gru` to either command.
 
-Once complete, you can exit the IBM Z Accelerated for TensorFlow container.
+Once complete, exit the container:
 
 ```bash
 exit
 ```
+
+## Cleanup
+
+When you are finished with the sample, remove the container, image, and workspace
+volume:
+
+```bash
+docker container prune -f
+docker rmi tensorflow-serving-ccf-sample:<timestamp>
+docker volume rm tensorflow-serving-ccf-workspace
+```
+
+If you are using rootless Podman, verify no processes are left behind:
+
+```bash
+top -u $(whoami)
+```
+
+## Known Issues
+
+There are no known open issues with this sample.
