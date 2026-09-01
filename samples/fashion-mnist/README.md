@@ -23,8 +23,10 @@ building a new container image on your behalf:
 2. `Containerfile` temporarily switches to `root` to install
    `tensorflow-serving-api` into the venv, then drops back to `ibm-user` as
    the runtime user.
-3. Once the image is built, `prerequisites.sh` starts an interactive shell
-   inside the container with a named volume mounted at `/workspace` (writable).
+3. Once the image is built, `prerequisites.sh` prints the generated image tag
+   and the `docker run` commands to start the container. The sample scripts are
+   mounted read-only at `/scripts` and the named volume is mounted at
+   `/workspace` for all output files.
 
 Run the script on the **host** (not from inside a container), passing your
 IBM Z Accelerated for TensorFlow production image as the argument:
@@ -44,23 +46,6 @@ This builds a local image and prints the generated image tag (e.g.
 commands to start the container. All output files (trained model, exported
 SavedModel, etc.) are written to `/workspace` inside the container.
 
-## Copying Scripts into the Container
-
-Once the container is running, open a second terminal on the host and use
-`docker cp` to copy the sample scripts into the container:
-
-```bash
-# Find the running container ID
-docker ps
-
-# Copy the sample scripts
-docker cp fashion_mnist_training.py <container-id>:/workspace/
-docker cp fashion_mnist_grpc.py <container-id>:/workspace/
-docker cp fashion_mnist_rest.py <container-id>:/workspace/
-```
-
-Then return to the container shell to run the sample.
-
 ## Running the Sample
 
 ### Step 1 — Train and export the model
@@ -71,7 +56,7 @@ All commands in this step are run from inside the container started by
 Train the model and export it as a SavedModel:
 
 ```bash
-python fashion_mnist_training.py
+python /scripts/fashion_mnist_training.py
 ```
 
 This saves the exported model to `./saved_model/1` inside `/workspace`. Once
@@ -120,6 +105,7 @@ the training and inference variants — use the inference one:
 ```bash
 docker run -it --rm \
     --network=host \
+    -v "$(pwd)":/scripts:ro,z \
     -v fashion-mnist-serving-workspace:/workspace \
     -w /workspace \
     fashion-mnist-serving-sample:<timestamp> \
@@ -129,25 +115,27 @@ docker run -it --rm \
 Then run inference over gRPC:
 
 ```bash
-python fashion_mnist_grpc.py
+python /scripts/fashion_mnist_grpc.py
 ```
 
 Or over REST:
 
 ```bash
-python fashion_mnist_rest.py
+python /scripts/fashion_mnist_rest.py
 ```
 
 Both scripts will report prediction accuracy for sample images.
 
 ## Cleanup
 
-When you are finished with the sample, remove the container, image, and workspace
-volume:
+When you are finished with the sample, stop the serving container, then remove
+all containers, images, and the workspace volume:
 
 ```bash
+docker stop $(docker ps -q --filter ancestor=icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X)
 docker container prune -f
 docker rmi fashion-mnist-serving-sample:<timestamp>
+docker rmi icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X
 docker volume rm fashion-mnist-serving-workspace
 ```
 

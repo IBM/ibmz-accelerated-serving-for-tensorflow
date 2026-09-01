@@ -32,9 +32,9 @@ request.model_spec.name = "fashion_mnist"
 request.model_spec.signature_name = "serving_default"
 
 # Process input.
-request.inputs["conv2d_input"].CopyFrom(tf.make_tensor_proto(X_test,
+request.inputs["keras_tensor"].CopyFrom(tf.make_tensor_proto(X_test,
                                                              dtype=tf.float32))
-request.output_filter.append("dense_2")
+request.output_filter.append("output_0")
 
 # Send request.
 channel = grpc.insecure_channel('localhost:8500')
@@ -42,7 +42,7 @@ stub = prediction_service_pb2_grpc.PredictionServiceStub(channel)
 outputs = stub.Predict(request, 5.0)
 
 # Process output.
-y_pred = tf.make_ndarray(outputs.outputs["dense_2"])
+y_pred = tf.make_ndarray(outputs.outputs["output_0"])
 
 correct_prediction = tf.equal(tf.argmax(y_pred, 1), tf.cast(y_test, tf.int64))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), axis=-1)

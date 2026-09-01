@@ -21,8 +21,10 @@ container image on your behalf:
    build argument to `Containerfile`.
 2. `Containerfile` temporarily switches to `root` to run the `dnf` and `pip`
    installs, then drops back to `ibm-user` as the runtime user.
-3. Once the image is built, `prerequisites.sh` starts an interactive shell
-   inside the container with a named volume mounted at `/workspace` (writable).
+3. Once the image is built, `prerequisites.sh` prints the generated image tag
+   and the `docker run` command to start the container. The sample scripts are
+   mounted read-only at `/scripts` and the named volume is mounted at
+   `/workspace` for all output files.
 
 This container is used for **deployment and inference** only. The TensorFlow
 Serving container is started separately as described below.
@@ -44,33 +46,24 @@ For example:
 ```
 
 This builds a local image and prints the generated image tag (e.g.
-`tensorflow-serving-ccf-sample:20250714-143022`) along with the `docker run` command
-to start the container.
+`tensorflow-serving-ccf-sample:20250714-143022`) along with the `docker run`
+command to start the container.
 
-## Copying Scripts and Training Artifacts into the Container
+## Copying Training Artifacts into the Container
 
-Once the container is running, open a second terminal on the host and use
-`docker cp` to copy the sample scripts into the container:
+Once the container is running, open a second terminal on the host and copy the
+training artifacts directly from the running TensorFlow CCF training container:
 
 ```bash
-# Find the running container ID
+# Find the running container IDs
 docker ps
 
-# Copy the sample scripts
-docker cp credit_card_fraud_deployment.py <container-id>:/workspace/
-docker cp credit_card_fraud_grpc.py <container-id>:/workspace/
-docker cp credit_card_fraud_rest.py <container-id>:/workspace/
-```
-
-Also copy the training artifacts produced by the TensorFlow CCF training
-sample into the container:
-
-```bash
-# Copy the trained model and supporting files
-docker cp /path/to/saved_model <container-id>:/workspace/
-docker cp /path/to/fitted_mapper_v2_lstm.pkl <container-id>:/workspace/
-docker cp /path/to/test_100k.csv <container-id>:/workspace/
-docker cp /path/to/test_100k.indices <container-id>:/workspace/
+# Copy the trained model and supporting files from the TF CCF training container
+# To run against the GRU model, replace fitted_mapper_v2_lstm.pkl with fitted_mapper_v2_gru.pkl
+docker cp <tf-ccf-training-container-id>:/workspace/saved_model <tf-serving-ccf-container-id>:/workspace/
+docker cp <tf-ccf-training-container-id>:/workspace/fitted_mapper_v2_lstm.pkl <tf-serving-ccf-container-id>:/workspace/
+docker cp <tf-ccf-training-container-id>:/workspace/test_100k.csv <tf-serving-ccf-container-id>:/workspace/
+docker cp <tf-ccf-training-container-id>:/workspace/test_100k.indices <tf-serving-ccf-container-id>:/workspace/
 ```
 
 Then return to the container shell to run the sample.
@@ -81,18 +74,20 @@ From inside the container, run the `credit_card_fraud_deployment.py` script.
 This exports the trained Keras model to a TensorFlow Serving Servable and
 creates a warmup file.
 
-```bash
-python credit_card_fraud_deployment.py
-```
-
-This creates a `serving_model/` directory in `/workspace`. To deploy the GRU
-model instead:
+**For the LSTM model (default):**
 
 ```bash
-python credit_card_fraud_deployment.py --rnn-type gru
+python /scripts/credit_card_fraud_deployment.py
 ```
 
-Once complete, exit the container:
+**For the GRU model:**
+
+```bash
+python /scripts/credit_card_fraud_deployment.py --rnn-type gru
+```
+
+This creates a `serving_model/lstm/` or `serving_model/gru/` directory in
+`/workspace`. Once complete, exit the container:
 
 ```bash
 exit
@@ -101,7 +96,10 @@ exit
 ## Serving the Model
 
 Start the IBM Z Accelerated for TensorFlow Serving container, mounting the
-`serving_model/` directory from the workspace volume:
+workspace volume. The `--model_name` and `--model_base_path` must match the
+model type you deployed above.
+
+**For the LSTM model:**
 
 ```bash
 docker run --rm --detach \
@@ -115,11 +113,23 @@ docker run --rm --detach \
     --model_base_path=/workspace/serving_model/lstm
 ```
 
-Replace `X.X.X` with the current version of the serving container image. For
-the GRU model, substitute `lstm` with `gru` in the `--model_name` and
-`--model_base_path` arguments.
+**For the GRU model:**
 
-You can verify the model is ready with:
+```bash
+docker run --rm --detach \
+    -p 8500:8500 -p 8501:8501 \
+    -v tensorflow-serving-ccf-workspace:/workspace \
+    -e MODEL_NAME=gru \
+    --entrypoint tensorflow_model_server \
+    icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X \
+    --port=8500 --rest_api_port=8501 \
+    --model_name=gru \
+    --model_base_path=/workspace/serving_model/gru
+```
+
+Replace `X.X.X` with the current version of the serving container image.
+
+You can verify the model is ready with (substitute `gru` if applicable):
 
 ```bash
 curl http://localhost:8501/v1/models/lstm/metadata
@@ -135,6 +145,7 @@ can reach the serving container on `localhost`. Use the image tag printed by
 docker run -it --rm \
     --entrypoint bash \
     --network=host \
+    -v "$(pwd)":/scripts:ro,z \
     -v tensorflow-serving-ccf-workspace:/workspace \
     -w /workspace \
     tensorflow-serving-ccf-sample:<timestamp>
@@ -145,18 +156,33 @@ docker run -it --rm \
 
 From inside the container, run inference using gRPC:
 
+**For the LSTM model (default):**
+
 ```bash
-python credit_card_fraud_grpc.py
+python /scripts/credit_card_fraud_grpc.py
+```
+
+**For the GRU model:**
+
+```bash
+python /scripts/credit_card_fraud_grpc.py --rnn-type gru
 ```
 
 Or using REST:
 
+**For the LSTM model (default):**
+
 ```bash
-python credit_card_fraud_rest.py
+python /scripts/credit_card_fraud_rest.py
 ```
 
-Both scripts report the test accuracy. To run against the GRU model, add
-`--rnn-type gru` to either command.
+**For the GRU model:**
+
+```bash
+python /scripts/credit_card_fraud_rest.py --rnn-type gru
+```
+
+Both scripts report the test accuracy.
 
 Once complete, exit the container:
 
@@ -166,12 +192,14 @@ exit
 
 ## Cleanup
 
-When you are finished with the sample, remove the container, image, and workspace
-volume:
+When you are finished with the sample, stop the serving container, then remove
+all containers, images, and the workspace volume:
 
 ```bash
+docker stop $(docker ps -q --filter ancestor=icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X)
 docker container prune -f
 docker rmi tensorflow-serving-ccf-sample:<timestamp>
+docker rmi icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X
 docker volume rm tensorflow-serving-ccf-workspace
 ```
 
