@@ -203,12 +203,6 @@ docker rmi icr.io/ibmz/ibmz-accelerated-serving-for-tensorflow:X.X.X
 docker volume rm tensorflow-serving-ccf-workspace
 ```
 
-If you are using rootless Podman, verify no processes are left behind:
-
-```bash
-top -u $(whoami)
-```
-
 ## Known Issues
 
 There are no known open issues with this sample.
