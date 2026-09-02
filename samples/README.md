@@ -130,11 +130,13 @@ constructed, or it might be a TensorFlow issue.
 See the README.md file included with the sample for additional setup
 instructions and for the commands to run them.
 
-Currently there are two samples available:
+Both samples require `prerequisites.sh` because they install packages that
+cannot be installed at runtime by `ibm-user`:
 
-[Fashion MNIST](fashion-mnist)
-
-[Credit Card Fraud](credit-card-fraud)
+| Sample | Why `prerequisites.sh` is needed |
+|---|---|
+| [Fashion MNIST](fashion-mnist) | Requires `tensorflow-serving-api`, which must be installed as `root` into the venv |
+| [Credit Card Fraud](credit-card-fraud) | Requires `scikit-learn`, `pandas`, `joblib`, `tensorflow-serving-api`, and build tools — all installed as `root` via a custom image |
 
 # Saving Models or Code changes
 
@@ -166,16 +168,7 @@ usage outside the container, or with other containers.
 
 4. Use [volumes](https://docs.docker.com/storage/volumes/) with the
    `docker run --mount` parameter. Volumes isolate the data from the host and
-   can be easily shared between containers. Named volumes are managed entirely
-   by the container runtime and are not subject to user namespace ownership
-   issues under rootless podman.
-
-   - Under podman, you can easily populate a volume from a tarball on the host,
-     or export a volume to a tarball with the
-     [`podman import`](https://docs.podman.io/en/latest/markdown/podman-volume-import.1.html)
-     and
-     [`podman export`](https://docs.podman.io/en/latest/markdown/podman-volume-export.1.html)
-     commands, respectively.
+   can be easily shared between containers.
 
 Use the technique that works best for your application to persist and share your
 data.
