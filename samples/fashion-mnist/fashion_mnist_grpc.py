@@ -32,7 +32,7 @@ request.model_spec.name = "fashion_mnist"
 request.model_spec.signature_name = "serving_default"
 
 # Process input.
-request.inputs["keras_tensor"].CopyFrom(tf.make_tensor_proto(X_test,
+request.inputs["input_layer"].CopyFrom(tf.make_tensor_proto(X_test,
                                                              dtype=tf.float32))
 request.output_filter.append("output_0")
 
